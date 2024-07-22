@@ -1,0 +1,111 @@
+﻿@page "/CadastrarMusica"
+@inject MusicaAPI musicaAPI
+@inject ArtistaAPI artistaAPI
+@inject NavigationManager navigationManager
+@inject ISnackbar Snackbar
+
+<PageTitle>Cadastrar Musica</PageTitle>
+
+<MudPaper Class="px-8 pt-2 pb-4 mx-12 my-8" Justify="Justify.Center">
+
+    <MudText Class="mt-8" Typo="Typo.h4">Cadastro de Musicas</MudText>
+
+    <MudForm @ref="form" @bind-IsValid="@success" @bind-Errors="@errors">
+
+        <MudTextField Class="mt-4" T="string" Placeholder="Nome da Musica"
+                      @bind-Value="nome"
+                      Variant="Variant.Outlined"
+                      Required="true"
+                      RequiredError="Campo obrigatório." />
+
+        <MudTextField Class="mt-4" T="string" Placeholder="Ano de Lançamento"
+                      @bind-Value="anoLancamento"
+                      Variant="Variant.Outlined" />
+
+        <MudSelect T="ArtistaResponse"
+                   Label="Artista"
+                   @bind-Value="artistaResponse"
+                   Variant="Variant.Filled" 
+                   AnchorOrigin="Origin.BottomCenter"
+                   Required="true"
+                   RequiredError="Campo obrigatório.">
+
+            @if (listaArtistas is not null)
+            {
+                @foreach (var item in listaArtistas)
+                {
+                    <MudSelectItem Value=item>@item.Nome</MudSelectItem>
+                }
+            }            
+           
+        </MudSelect>
+
+        <div class="d-flex align-center justify-space-between mt-4">
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       Disabled="@(!success)"
+                       Class="ml-auto"
+                       @onclick="Cadastrar">
+                Cadastrar
+            </MudButton>
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Info"
+                       Class="ml-3"
+                       @onclick="VoltarParaListagem">
+                Voltar
+            </MudButton>
+        </div>
+
+    </MudForm>
+
+</MudPaper>
+@code {
+
+    bool success;
+    string[] errors = { };
+    MudForm form;
+
+    private string? nome;
+    private string? anoLancamento;
+    private string? artistaSelecionado;
+
+    private int idArtista;
+
+    private string fileImage = string.Empty;
+    private string fotoPerfil = string.Empty;
+    private ArtistaResponse artistaResponse;
+
+    private ICollection<ArtistaResponse>? listaArtistas;
+
+    private void VoltarParaListagem()
+    {
+        navigationManager.NavigateTo("/MusicasPorArtista");
+    }
+
+    private async Task Cadastrar()
+    {
+
+        try
+        {
+            var request = new MusicaRequest(nome!, artistaResponse.Id!, Convert.ToInt32(anoLancamento));
+            await musicaAPI.AddMusicaAsync(request);
+            Snackbar.Add("Artista cadastrado com sucesso!", Severity.Success);
+            navigationManager.NavigateTo("/MusicasPorArtista");
+        }
+        catch (Exception)
+        {
+             
+        }
+
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        GetAstistas();
+    }
+
+    public async void GetAstistas()
+    {
+        listaArtistas = await artistaAPI.GetArtistasAsync();        
+    }
+}

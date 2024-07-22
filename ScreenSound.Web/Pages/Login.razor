@@ -1,0 +1,140 @@
+﻿@page "/login"
+
+@inject AuthAPI AuthAPI
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@attribute [AllowAnonymous]
+
+<MudPaper Class="px-8 pt-2 pb-4 mx-16 my-8" Justify="Justify.Center">
+    <AuthorizeView>
+        <Authorized>
+            <p>Você está conectado como @context.User.Identity.Name </p>
+        </Authorized>
+        <NotAuthorized>
+            <MudForm @ref="form" @bind-IsValid="@success" @bind-Errors="@errors">
+                <MudTabs Elevation="4" Rounded="true" Centered="true" Color="@Color.Transparent">
+                    <MudTabPanel Text="Efetuar Login">
+                        <MudTextField T="string" Label="Email" @bind-Value="email"
+                                      Variant="Variant.Outlined" Class="my-4"
+                                      Required="true" RequiredError="Email obrigatório!"
+                                      OnlyValidateIfDirty="true" />
+
+                        <MudTextField T="string" Label="Senha" @bind-Value="senha"
+                                      InputType="InputType.Password"
+                                      Variant="Variant.Outlined" Class="my-4"
+                                      Required="true" RequiredError="Senha obrigatória!"
+                                      OnlyValidateIfDirty="true" />
+
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                   Class="ml-auto" @onclick="LoginUser">
+                            Login
+                        </MudButton>
+                    </MudTabPanel>
+
+                    <MudTabPanel Text="Cadastrar">
+                        <MudTextField T="string"
+                                      Label="Email"
+                                      Required="true"
+                                      RequiredError="Email obrigatório!"
+                                      @ref="emailFiled"
+                                      Validation="@(new EmailAddressAttribute() {ErrorMessage = "Formato do email incorreto : example@mail.com"})" />
+                        <MudTextField T="string"
+                                      Label="Senha"
+                                      HelperText="A senha deve conter:
+                                                  Mais de 8 caractéres;
+                                                  Pelo menos 1 letra MAIUSCULA;
+                                                  Pelo menos 1 letra minuscula;
+                                                  Pelo menos 1 número;
+                                                 " @ref="pwField"
+                                      InputType="InputType.Password"
+                                      Validation="@(new Func<string, IEnumerable<string>>(PasswordStrength))"
+                                      Required="true"
+                                      RequiredError="Senha obrigatória!" />
+                        <MudTextField T="string"
+                                      Label="Confirmar Senha"
+                                      HelperText="Confirme sua senha"
+                                      InputType="InputType.Password"
+                                      Validation="@(new Func<string, string>(PasswordMatch))" />
+                        <div class="d-flex align-center justify-space-between">
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!success)" Class="ml-auto" OnClick="Register">
+                                Cadastrar
+                            </MudButton>
+                        </div>
+                    </MudTabPanel>
+
+                </MudTabs>
+            </MudForm>
+        </NotAuthorized>
+    </AuthorizeView>
+</MudPaper>
+
+@code {
+    private string? email;
+    private string? senha;
+
+    bool success;
+    string[] errors = { };
+    MudTextField<string> pwField;
+    MudTextField<string> emailFiled;
+    MudForm form;
+
+    [SupplyParameterFromQuery]
+    public string? ReturnUrl { get; set; }
+
+    private async Task LoginUser()
+    {
+        var resposta = await AuthAPI.LoginAsync(email!, senha!);
+
+        if (resposta.Sucesso)
+        {
+            if (ReturnUrl is not null)
+                Navigation.NavigateTo(ReturnUrl);
+
+            Snackbar.Add("Bem vindo!", Severity.Success);
+
+        }
+        else
+            Snackbar.Add("Usuário ou senha inválidos!", Severity.Warning);
+
+    }
+
+    private async Task Register()
+    {
+        var resposta = await AuthAPI.CreateAsync(emailFiled.Text!, pwField.Text!);
+
+        if (resposta.Sucesso)
+        {
+            if (ReturnUrl is not null)
+                Navigation.NavigateTo(ReturnUrl);
+
+            Snackbar.Add("Novo usuário cadastrado com sucesso!", Severity.Success);
+        }
+        else
+            Snackbar.Add("Ocorreu um erro ao efetuar o cadastro", Severity.Warning);
+    }
+
+    private IEnumerable<string> PasswordStrength(string pw)
+    {
+        if (string.IsNullOrWhiteSpace(pw))
+        {
+            yield return "Senha é obrigatório!";
+            yield break;
+        }
+        if (pw.Length < 8)
+            yield return "Senha tem que ter mais de 8 caractéres";
+        if (!Regex.IsMatch(pw, @"[A-Z]"))
+            yield return "Senha tem que conter pelo menos 1 letra MAIUSCULA";
+        if (!Regex.IsMatch(pw, @"[a-z]"))
+            yield return "Senha tem que conter pelo menos 1 letra minuscula";
+        if (!Regex.IsMatch(pw, @"[0-9]"))
+            yield return "Senha tem que conter pelo menos 1 número";
+
+    }
+
+    private string PasswordMatch(string arg)
+    {
+        if (pwField.Value != arg)
+            return "Senhas não condizem";
+        return null;
+    }
+}
